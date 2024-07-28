@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <!-- <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"> -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1"></script>
+</head>
+<body>
+    <div class="nav-container" >
+      <form action="/weather" method="post">
+        <nav class="button">
+          <div class="button_div" >
+            <input type="text" id="country"  class="no-style-button" name="place" placeholder="Search for places..." required>
+            <div class="nav-image">
+              <button type="submit" class="butt">
+                <img src="https://cdn-icons-png.flaticon.com/512/751/751463.png" alt="search icon">
+              </button>
+            </div>           
+          </div>
+        </nav>
+      </form>
+  </div>
+    {% if weather %}
+
+    <div class="weather-map">
+      <div class="container weather-container" style="background-image: url('{{ pic_urls }}'); background-size: cover;">
+        <div class="cw">Current Weather</div>
+        <div class="upper-section">
+            <div class="image">
+                <img src="{{ icon[weather.current.icon_num] }}" alt="Weather icon">
+            </div>
+            <div class="temperature">
+                <b><p>{{ weather.current.temperature }}°C</p></b>
+            </div>
+            <div class="minmaxtemp">
+              <div><p>{{ prediction.daily.data[0].temperature_max }}°C</p></div>
+            <div><p>{{ prediction.daily.data[0].temperature_min }}°C</p></div>
+            </div> 
+        </div>
+        <div class="weather-details">
+            <div class="d"><p>Summary<br><strong id="d">{{ weather.current.summary }}</strong></p></div>
+            <div class="d"><p>Feels Like<br><strong id="d">{{ weather.current.feels_like }}°C</strong></p></div>
+            {% if weather.current.wind %}
+            <div class="d"><p>Wind Speed<br><strong id="d">{{ weather.current.wind.speed }} m/s</strong></p></div>
+            {% else %}
+            <div class="d"><p>Wind Speed<br><strong id="d">N/A</strong></p></div>
+            {% endif %}
+            <div class="d"><p>Humidity<br><strong id="d">{{ weather.current.humidity }}%</strong></p></div>  
+        </div>
+    </div>
+    <div>
+        <div id="map"></div>
+          <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+          <script>
+            // Get the latitude and longitude from Flask
+            var latitude = {{ latitude | tojson | safe}};
+            var longitude = {{ longitude | tojson | safe}};
+            
+            // Initialize the map
+            const map = L.map('map').setView([latitude, longitude], 13);
+
+            // Set up the OpenStreetMap layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              maxZoom: 19,
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Add a marker to the map
+            L.marker([latitude, longitude]).addTo(map)
+              .bindPopup('Weather Location')
+              .openPopup();
+          </script>
+    </div>
+    </div>
+    
+    {% endif %}
+
+    {% if prediction %}
+    <div class="day-head"><h2>7 day forecast</h2></div> 
+<div class="daily prediction">
+<div class="day1">
+        <p id="ppp">Today</p>
+        <div class="individual">
+            <div class="image">
+                <img src="{{src[0]}}" alt="Weather icon">
+            </div>
+            <div class="maxmin">
+                <div>
+                    <p><b>{{ prediction["daily"]["data"][0]['temperature_max'] }}°C</b></p>
+                </div>
+                <div>
+                    <p>{{ prediction["daily"]["data"][0]['temperature_min'] }}°C</p>
+                </div>
+            </div>
+            <div>
+                <p>{{ predictedWeather }}</p>
+            </div>
+        </div> 
+    </div>
+
+    {% for i in range(1,8) %}
+    <div class="day{{i+1}}">
+        <p id="ppp">Day {{i}}</p>
+        <div class="individual">
+            <div class="image">
+                <img src="{{src[i]}}" alt="">
+            </div>
+            <div class="maxmin">
+                <div>
+                    <p><b>{{ prediction["daily"]["data"][i]['temperature_max'] }}°C</b></p>
+                </div>
+                <div>
+                    <p>{{ prediction["daily"]["data"][i]['temperature_min'] }}°C</p>
+                </div>
+            </div>
+        </div> 
+    </div>
+    {% endfor %} 
+    <div id="plot"></div>
+</div>
+<div class="day-head">
+  <h2>Summary</h2>
+</div>
+<div class="graph">
+  <canvas id="weatherChart"></canvas>
+</div>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+
+    var jsonData = {{ jsonData | tojson | safe}};
+
+    const data = {
+      labels: jsonData.x,
+      datasets: [{
+        label: 'Temperature (°C)',
+        data: jsonData.y,
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        borderColor: 'rgba(255, 99, 132, 1)',
+        borderWidth: 1,
+        fill: true,
+        tension: 0.4
+      }]
+    };
+
+    const config = {
+      type: 'line',
+      data: data,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            enabled: true
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: 'white'
+            }
+          },
+          y: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.2)'
+            },
+            ticks: {
+              color: 'white'
+            },
+            beginAtZero: true
+          }
+        },
+        elements: {
+          point: {
+            radius: 3
+          }
+        }
+      }
+    };
+
+    // Render the chart
+    const ctx = document.getElementById('weatherChart').getContext('2d');
+    const weatherChart = new Chart(ctx, config);
+
+</script>
+
+{% endif %}
+</body>
+</html>
